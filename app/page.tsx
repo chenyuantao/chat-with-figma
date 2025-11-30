@@ -5,7 +5,7 @@ import { useChat } from "ai/react";
 import va from "@vercel/analytics";
 import clsx from "clsx";
 import { LoadingCircle, SendIcon } from "./icons";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Textarea from "react-textarea-autosize";
@@ -40,6 +40,27 @@ export default function Chat() {
   });
 
   const disabled = isLoading || input.length === 0;
+  const hasAiResponse = messages.some((m) => m.role === "assistant");
+
+  const handleExport = () => {
+    const aiContent = messages
+      .filter((m) => m.role === "assistant")
+      .map((m) => m.content)
+      .join("\n\n---\n\n");
+
+    if (!aiContent) return;
+
+    const blob = new Blob([aiContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const date = new Date().toISOString().split("T")[0];
+    a.download = `chat-figma-${date}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <main className="flex flex-col items-center justify-between pb-40">
@@ -128,38 +149,54 @@ export default function Chat() {
             required
             rows={1}
             autoFocus
-            placeholder="Send a message"
+            placeholder="发消息"
             value={input}
+            disabled={isLoading}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              if (e.key === "Enter" && !e.shiftKey && !isLoading) {
                 formRef.current?.requestSubmit();
                 e.preventDefault();
               }
             }}
             spellCheck={false}
-            className="w-full pr-10 focus:outline-none"
-          />
-          <button
             className={clsx(
-              "absolute inset-y-0 right-3 my-auto flex h-8 w-8 items-center justify-center rounded-md transition-all",
-              disabled
-                ? "cursor-not-allowed bg-white"
-                : "bg-green-500 hover:bg-green-600",
+              "w-full resize-none bg-transparent focus:outline-none",
+              hasAiResponse ? "pr-24" : "pr-10",
             )}
-            disabled={disabled}
-          >
-            {isLoading ? (
-              <LoadingCircle />
-            ) : (
-              <SendIcon
-                className={clsx(
-                  "h-4 w-4",
-                  input.length === 0 ? "text-gray-300" : "text-white",
-                )}
-              />
+          />
+          <div className="absolute inset-y-0 right-3 flex items-center space-x-2">
+            {hasAiResponse && (
+              <button
+                type="button"
+                onClick={handleExport}
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 transition-all hover:bg-gray-200"
+                title="导出Markdown"
+              >
+                <Download className="h-4 w-4 text-gray-600" />
+              </button>
             )}
-          </button>
+            <button
+              className={clsx(
+                "flex h-8 w-8 items-center justify-center rounded-md transition-all",
+                disabled
+                  ? "cursor-not-allowed bg-white"
+                  : "bg-green-500 hover:bg-green-600",
+              )}
+              disabled={disabled}
+            >
+              {isLoading ? (
+                <LoadingCircle />
+              ) : (
+                <SendIcon
+                  className={clsx(
+                    "h-4 w-4",
+                    input.length === 0 ? "text-gray-300" : "text-white",
+                  )}
+                />
+              )}
+            </button>
+          </div>
         </form>
         <p className="text-center text-xs text-gray-400">Powered by Towerchen</p>
       </div>
