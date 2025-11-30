@@ -1,0 +1,1 @@
+获取这个设计稿的截图@https://www.figma.com/design/ugzeyhbxSNn8QcBAyWgsfi/%E6%99%BA%E8%83%BD%E4%B8%BB%E9%A1%B5-V1.0?node-id=6004-141276&m=dev
