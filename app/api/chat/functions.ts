@@ -3,39 +3,39 @@ import type { ChatCompletionTool } from "openai/resources/chat/completions";
 import { figmaMCPClient } from "./mcp";
 
 export const functions: Chat.ChatCompletionCreateParams.Function[] = [
-  {
-    name: "get_screenshot",
-    description:
-      "Generate a screenshot for a given node or the currently selected node in the Figma desktop app. Use the nodeId parameter to specify a node id. nodeId parameter is REQUIRED. Use the fileKey parameter to specify the file key. fileKey parameter is REQUIRED. If a URL is provided, extract the file key and node id from the URL. For example, if given the URL https://figma.com/design/pqrs/ExampleFile?node-id=1-2 the extracted fileKey would be `pqrs` and the extracted nodeId would be `1:2`. If the URL is of the format https://figma.com/design/:fileKey/branch/:branchKey/:fileName then use the branchKey as the fileKey.",
-    parameters: {
-      type: "object",
-      properties: {
-        nodeId: {
-          type: "string",
-          pattern: "^$|^(?:-?\\d+[:-]-?\\d+)$",
-          description:
-            'The ID of the node in the Figma document, eg. "123:456" or "123-456". This should be a valid node ID in the Figma document.',
-        },
-        fileKey: {
-          type: "string",
-          description:
-            "The key of the Figma file to use. If the URL is provided, extract the file key from the URL. The given URL must be in the format https://figma.com/design/:fileKey/:fileName?node-id=:int1-:int2. The extracted fileKey would be `:fileKey`.",
-        },
-        clientLanguages: {
-          type: "string",
-          description:
-            "A comma separated list of programming languages used by the client in the current context in string form, e.g. `javascript`, `html,css,typescript`, etc. If you do not know, please list `unknown`. This is used for logging purposes to understand which languages are being used. If you are unsure, it is better to list `unknown` than to make a guess.",
-        },
-        clientFrameworks: {
-          type: "string",
-          description:
-            "A comma separated list of frameworks used by the client in the current context, e.g. `react`, `vue`, `django` etc. If you do not know, please list `unknown`. This is used for logging purposes to understand which frameworks are being used. If you are unsure, it is better to list `unknown` than to make a guess",
-        },
-      },
-      required: ["nodeId", "fileKey"],
-      additionalProperties: false,
-    },
-  },
+  // {
+  //   name: "get_screenshot",
+  //   description:
+  //     "Generate a screenshot for a given node or the currently selected node in the Figma desktop app. Use the nodeId parameter to specify a node id. nodeId parameter is REQUIRED. Use the fileKey parameter to specify the file key. fileKey parameter is REQUIRED. If a URL is provided, extract the file key and node id from the URL. For example, if given the URL https://figma.com/design/pqrs/ExampleFile?node-id=1-2 the extracted fileKey would be `pqrs` and the extracted nodeId would be `1:2`. If the URL is of the format https://figma.com/design/:fileKey/branch/:branchKey/:fileName then use the branchKey as the fileKey.",
+  //   parameters: {
+  //     type: "object",
+  //     properties: {
+  //       nodeId: {
+  //         type: "string",
+  //         pattern: "^$|^(?:-?\\d+[:-]-?\\d+)$",
+  //         description:
+  //           'The ID of the node in the Figma document, eg. "123:456" or "123-456". This should be a valid node ID in the Figma document.',
+  //       },
+  //       fileKey: {
+  //         type: "string",
+  //         description:
+  //           "The key of the Figma file to use. If the URL is provided, extract the file key from the URL. The given URL must be in the format https://figma.com/design/:fileKey/:fileName?node-id=:int1-:int2. The extracted fileKey would be `:fileKey`.",
+  //       },
+  //       clientLanguages: {
+  //         type: "string",
+  //         description:
+  //           "A comma separated list of programming languages used by the client in the current context in string form, e.g. `javascript`, `html,css,typescript`, etc. If you do not know, please list `unknown`. This is used for logging purposes to understand which languages are being used. If you are unsure, it is better to list `unknown` than to make a guess.",
+  //       },
+  //       clientFrameworks: {
+  //         type: "string",
+  //         description:
+  //           "A comma separated list of frameworks used by the client in the current context, e.g. `react`, `vue`, `django` etc. If you do not know, please list `unknown`. This is used for logging purposes to understand which frameworks are being used. If you are unsure, it is better to list `unknown` than to make a guess",
+  //       },
+  //     },
+  //     required: ["nodeId", "fileKey"],
+  //     additionalProperties: false,
+  //   },
+  // },
   {
     name: "create_design_system_rules",
     description:
@@ -259,10 +259,14 @@ export const tools: ChatCompletionTool[] = functions.map(
   })
 );
 
-export async function runFunction(name: string, args: any) {
+export async function runFunction(
+  toolId: string,
+  name: string,
+  args: any
+) {
   const startTime = Date.now();
-  
-  console.log(`[runFunction] Executing tool: ${name}`, {
+
+  console.log(`[runFunction] --> Executing tool: ${name}(${toolId})`, {
     toolName: name,
     arguments: args,
     timestamp: new Date().toISOString(),
@@ -273,10 +277,10 @@ export async function runFunction(name: string, args: any) {
       name,
       args || {}
     );
-    
+
     const duration = Date.now() - startTime;
     const result = data.result;
-    
+
     // 记录结果信息
     const resultInfo = {
       toolName: name,
@@ -297,12 +301,12 @@ export async function runFunction(name: string, args: any) {
       (resultInfo as any).resultLength = result.length;
     }
 
-    console.log(`[runFunction] Tool execution completed: ${name}`, resultInfo);
+    console.log(`[runFunction] <-- Tool execution completed: ${name}(${toolId})`, resultInfo);
 
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(`[runFunction] Tool execution failed: ${name}`, {
+    console.error(`[runFunction] <-- Tool execution failed: ${name}(${toolId})`, {
       toolName: name,
       duration: `${duration}ms`,
       error: error instanceof Error ? error.message : String(error),

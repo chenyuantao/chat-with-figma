@@ -1,10 +1,10 @@
-import { kv } from "@vercel/kv";
-import { Ratelimit } from "@upstash/ratelimit";
 import { OpenRouter } from "@openrouter/sdk";
 import {
   OpenAIStream,
   StreamingTextResponse,
 } from "ai";
+import fs from "fs";
+import path from "path";
 import { tools, runFunction } from "./functions";
 
 // Create an OpenRouter API client
@@ -14,40 +14,21 @@ const openrouter = new OpenRouter({
 
 export const runtime = "nodejs";
 
+const MODEL = "anthropic/claude-sonnet-4.5";
+
 export async function POST(req: Request) {
-  if (
-    process.env.NODE_ENV !== "development" &&
-    process.env.KV_REST_API_URL &&
-    process.env.KV_REST_API_TOKEN
-  ) {
-    const ip = req.headers.get("x-forwarded-for");
-    const ratelimit = new Ratelimit({
-      redis: kv,
-      limiter: Ratelimit.slidingWindow(50, "1 d"),
-    });
-
-    const { success, limit, reset, remaining } = await ratelimit.limit(
-      `chathn_ratelimit_${ip}`,
-    );
-
-    if (!success) {
-      return new Response("You have reached your request limit for the day.", {
-        status: 429,
-        headers: {
-          "X-RateLimit-Limit": limit.toString(),
-          "X-RateLimit-Remaining": remaining.toString(),
-          "X-RateLimit-Reset": reset.toString(),
-        },
-      });
-    }
-  }
-
   const { messages: rawMessages } = await req.json();
-  const messages = convertToOpenRouterMessages(rawMessages);
+  const messages = [
+    {
+      role: "system",
+      content: fs.readFileSync(path.join(process.cwd(), 'prompt-system.md'), 'utf8'),
+    },
+    ...convertToOpenRouterMessages(rawMessages),
+  ];
 
   // check if the conversation requires a function call to be made
   const initialResponse = await openrouter.chat.send({
-    model: "gpt-3.5-turbo-0613",
+    model: MODEL,
     messages: messages as any,
     stream: true,
     tools: tools as any,
@@ -97,23 +78,24 @@ export async function POST(req: Request) {
       toolCallPayload: any,
       appendToolCallMessage: any,
     ) => {
-      const toolCallResults = [];
-
-      for (const toolCall of toolCallPayload.tools) {
+      const toolCallResults = await Promise.all(toolCallPayload.tools.map(async (toolCall: any) => {
         let args = toolCall.func.arguments;
         try {
           args = JSON.parse(args);
         } catch (error) {
           console.error(`Error parsing arguments for tool call ${toolCall.func.name}:`, error);
         }
-        const result = await runFunction(toolCall.func.name, args);
-        toolCallResults.push({
+        const result = await runFunction(
+          toolCall.id,
+          toolCall.func.name,
+          args
+        );
+        return {
           tool_call_id: toolCall.id,
           function_name: toolCall.func.name,
-          tool_call_result: result.content,
-        });
-      }
-
+          tool_call_result: result?.content ?? result ?? 'Unknown error',
+        };
+      }));
       // Append the results to the message history helper
       for (const result of toolCallResults) {
         appendToolCallMessage(result);
@@ -121,13 +103,17 @@ export async function POST(req: Request) {
 
       // Get the updated messages including the tool results
       const newMessages = appendToolCallMessage();
-      return openrouter.chat.send({
-        model: "gpt-3.5-turbo-0613",
+      const sendMessages = [...messages, ...convertToOpenRouterMessages(newMessages)] as any;
+      console.log('--- sendMessages ---', sendMessages.length);
+      const response = await openrouter.chat.send({
+        model: MODEL,
         stream: true,
-        messages: [...messages, ...convertToOpenRouterMessages(newMessages)] as any,
+        messages: sendMessages,
         tools: tools as any,
         toolChoice: "auto",
       });
+
+      return transformStream(response);
     },
   } as any);
 
@@ -138,19 +124,19 @@ export async function POST(req: Request) {
 function convertToOpenRouterMessages(messages: any[]) {
   return messages.map((message) => {
     const newMessage = { ...message };
-    
+
     // Convert tool_call_id to toolCallId for tool messages
     if (newMessage.role === 'tool' && newMessage.tool_call_id) {
       newMessage.toolCallId = newMessage.tool_call_id;
       delete newMessage.tool_call_id;
     }
-    
+
     // Convert tool_calls to toolCalls for assistant messages
     if (newMessage.role === 'assistant' && newMessage.tool_calls) {
       newMessage.toolCalls = newMessage.tool_calls;
       delete newMessage.tool_calls;
     }
-    
+
     return newMessage;
   });
 }
