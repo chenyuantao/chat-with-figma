@@ -7,14 +7,14 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "ChatHN – Chat with Hacker News using natural language",
+  title: "ChatFigma",
   description:
-    "Chat with Hacker News using natural language. Built with OpenAI Functions and Vercel AI SDK.",
+    "Chat with any Figma and get the professional review.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body className={inter.className}>
         {children}
         <Toaster />

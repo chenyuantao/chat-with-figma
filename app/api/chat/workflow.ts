@@ -1,6 +1,6 @@
 import { StateGraph, MessagesAnnotation } from "@langchain/langgraph";
 import { ChatOpenAI } from "@langchain/openai";
-import { ToolMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
+import { ToolMessage, AIMessage } from "@langchain/core/messages";
 import { tools as openAiTools, runFunction } from "./functions";
 
 // Initialize model
@@ -32,7 +32,7 @@ async function agent(state: typeof MessagesAnnotation.State) {
 async function toolNode(state: typeof MessagesAnnotation.State) {
   const { messages } = state;
   const lastMessage = messages[messages.length - 1] as AIMessage;
-  
+
   if (!lastMessage.tool_calls || lastMessage.tool_calls.length === 0) {
     return { messages: [] };
   }
