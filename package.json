@@ -11,6 +11,9 @@
     "format": "prettier \"**/*.{css,js,json,jsx,ts,tsx}\""
   },
   "dependencies": {
+    "@langchain/core": "^1.1.0",
+    "@langchain/langgraph": "^1.0.2",
+    "@langchain/openai": "^1.1.3",
     "@openrouter/sdk": "^0.1.27",
     "@types/node": "20.3.1",
     "@types/react": "18.2.14",
