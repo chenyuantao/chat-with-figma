@@ -7,7 +7,7 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "ChatFigma",
+  title: "Figma设计稿评审Agent",
   description:
     "Chat with any Figma and get the professional review.",
 };

@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useChat } from "ai/react";
 import va from "@vercel/analytics";
 import clsx from "clsx";
 import { LoadingCircle, SendIcon } from "./icons";
-import { Bot, User, Download } from "lucide-react";
+import { Bot, User, Download, RotateCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Textarea from "react-textarea-autosize";
@@ -21,7 +21,7 @@ export default function Chat() {
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { messages, input, setInput, handleSubmit, isLoading } = useChat({
+  const { messages, input, setInput, handleSubmit, isLoading, setMessages } = useChat({
     onResponse: (response) => {
       if (response.status === 429) {
         toast.error("You have reached your request limit for the day.");
@@ -42,6 +42,24 @@ export default function Chat() {
   const disabled = isLoading || input.length === 0;
   const hasAiResponse = messages.some((m) => m.role === "assistant");
 
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chat-messages");
+    if (savedMessages) {
+      try {
+        setMessages(JSON.parse(savedMessages));
+      } catch (error) {
+        console.error("Failed to load messages from localStorage:", error);
+        localStorage.removeItem("chat-messages");
+      }
+    }
+  }, [setMessages]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("chat-messages", JSON.stringify(messages));
+    }
+  }, [messages]);
+
   const handleExport = () => {
     const aiContent = messages
       .filter((m) => m.role === "assistant")
@@ -60,6 +78,11 @@ export default function Chat() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleClear = () => {
+    setMessages([]);
+    localStorage.removeItem("chat-messages");
   };
 
   return (
@@ -162,19 +185,29 @@ export default function Chat() {
             spellCheck={false}
             className={clsx(
               "w-full resize-none bg-transparent focus:outline-none",
-              hasAiResponse ? "pr-24" : "pr-10",
+              hasAiResponse ? "pr-32" : "pr-10",
             )}
           />
           <div className="absolute inset-y-0 right-3 flex items-center space-x-2">
             {hasAiResponse && (
-              <button
-                type="button"
-                onClick={handleExport}
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 transition-all hover:bg-gray-200"
-                title="导出Markdown"
-              >
-                <Download className="h-4 w-4 text-gray-600" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 transition-all hover:bg-gray-200"
+                  title="新对话"
+                >
+                  <RotateCw className="h-4 w-4 text-gray-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 transition-all hover:bg-gray-200"
+                  title="导出Markdown"
+                >
+                  <Download className="h-4 w-4 text-gray-600" />
+                </button>
+              </>
             )}
             <button
               className={clsx(
